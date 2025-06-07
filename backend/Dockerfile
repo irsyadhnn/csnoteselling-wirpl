@@ -1,27 +1,26 @@
-# === Step 1: Build Frontend ===
-FROM node:18 AS frontend
-WORKDIR /frontend
-COPY frontend/ /frontend
-RUN npm install && npm run build
+# backend/Dockerfile
+FROM python:3.11-slim
 
-# === Step 2: Build Backend ===
-FROM python:3.10 AS backend
-WORKDIR /app
-COPY backend/ /app
-RUN pip install -r requirements.txt
-
-# === Step 3: Combine into Final Image ===
-FROM python:3.10
 WORKDIR /app
 
-# Copy backend code
-COPY --from=backend /app /app
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    default-libmysqlclient-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy built frontend to backend's static folder
-COPY --from=frontend /frontend/dist /app/static
+# Copy requirements first for better caching
+COPY requirements.txt .
 
-# Expose port (optional)
-EXPOSE 8000
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Run backend
+# Copy application code
+COPY . .
+
+# Expose port
+EXPOSE 5000
+
+# Command to run the application
 CMD ["python", "app.py"]
